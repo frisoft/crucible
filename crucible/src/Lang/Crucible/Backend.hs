@@ -95,6 +95,7 @@ module Lang.Crucible.Backend
   , addFailedAssertion
   , assertIsInteger
   , readPartExpr
+  , proofObligationsAsImplications
   , ppProofObligation
   , backendOptions
   , assertThenAssumeConfigOption
@@ -612,6 +613,15 @@ readPartExpr bak (PE p v) msg = do
   loc <- getCurrentProgramLoc sym
   addAssertion bak (LabeledPred p (SimError loc msg))
   return v
+
+-- | Get proof obligations as What4 implications.
+proofObligationsAsImplications :: IsSymBackend sym bak => bak -> IO [Pred sym]
+proofObligationsAsImplications bak = do
+  let sym = backendGetSym bak
+  obligations <- maybe [] PG.goalsToList <$> getProofObligations bak
+  forM obligations $ \(AS.ProofGoal hyps (LabeledPred concl _err)) -> do
+    hyp <- assumptionsPred sym hyps
+    impliesPred sym hyp concl
 
 ppProofObligation :: IsExprBuilder sym => sym -> ProofObligation sym -> IO (PP.Doc ann)
 ppProofObligation sym (AS.ProofGoal asmps gl) =
